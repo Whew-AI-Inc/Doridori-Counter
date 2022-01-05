@@ -4,7 +4,7 @@
 도리도리 카운터는 사람의 인중 움직임을 감지하여 얼마나 고개를 흔드는지 알 수 있는 프로그램입니다. 
 
 ## Sample Video
-https://youtu.be/8zCk4WtGvVY
+[유튜브 링크](https://youtu.be/8zCk4WtGvVY)
 
 ## QuickStart
 
