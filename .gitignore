@@ -3,3 +3,4 @@ Untitled.ipynb
 *.mp4
 !suk_shortshort.mp4
 .ipynb_checkpoints/
+__pycache__/
