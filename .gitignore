@@ -1,0 +1,5 @@
+Untitled.ipynb
+*.npy
+*.mp4
+!suk_shortshort.mp4
+.ipynb_checkpoints/
