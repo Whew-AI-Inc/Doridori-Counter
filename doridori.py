@@ -13,15 +13,19 @@ class Doridori:
     def __init__(self,filepath):
         self.cap = cv2.VideoCapture(filepath)
         self.total_frame = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.frame_rate = self.cap.get(cv2.CAP_PROP_FPS)
         self.df = np.array([])
         self.distance_list = np.array([])
         self.peaks = np.array([])
+        self.face_length = np.array([])
+        self.filepath = filepath
         
     def detect_face(self):
         frame_cnt = 0
         nose_x = list()
         nose_y = list()
         nose_z = list()
+        face_length = list()
         mp_face_mesh = mp.solutions.face_mesh
         with mp_face_mesh.FaceMesh(
             static_image_mode=True,
@@ -33,19 +37,22 @@ class Doridori:
                     frame_cnt += 1
                     results = face_mesh.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                     if results.multi_face_landmarks:
-                        x, y, z = self.__getNose(results.multi_face_landmarks)
+                        x, y, z = self.__getMark(results.multi_face_landmarks)
+                        x_, y_, z_ = self.__getMark(results.multi_face_landmarks, mark_num=8)
                         nose_x.append(x)
                         nose_y.append(y)
                         nose_z.append(z)
+                        face_length.append(distance.euclidean([x, y, z], [x_, y_, z_]))
                     if frame_cnt >= self.total_frame:
                         print("============End Video============")
                         self.df = np.array([nose_x, nose_y, nose_z]).T
+                        self.face_length = np.array(face_length)
                         break
             self.cap.release()
             cv2.destroyAllWindows()
         return self.df
 
-    def fit(self, data = np.array([]), threshold=0.004, min_peak_distance = 12, display_mode = True):
+    def fit(self, data = np.array([]), threshold=2.3, min_peak_time = 400, display_mode = True):
         distance_list = list()
         if data.size == 0:
             df = self.df
@@ -53,6 +60,8 @@ class Doridori:
             df = data
         for i in range(1, len(df)):
             distance_list.append(distance.euclidean(df[i-1,:], df[i,:]))
+        distance_list = self.__normalize(np.array(distance_list))
+        min_peak_distance = int(min_peak_time * self.frame_rate / 1000.0)
         peaks_index = find_peaks(distance_list, distance=min_peak_distance)[0]
         low_peak_index = list()
         for i, j in enumerate (peaks_index):
@@ -76,7 +85,7 @@ class Doridori:
         
         return len(peaks_index)
     
-    def save_video(self, filepath, display_frame = 100, frame_rate = 30.0, video_size=(25,8)):
+    def save_video(self, filepath, display_frame = 100, video_size=(25,8)):
         fig, ax = plt.subplots(figsize=video_size)
         camera = Camera(fig)
         padding_nan = np.empty(display_frame)
@@ -88,18 +97,21 @@ class Doridori:
             ax.plot(peaks_with_nan[i-display_frame:i], 'ro')
             camera.snap()
         print(f"saving to {filepath}")
-        animation = camera.animate(interval=1000.0/frame_rate)
+        animation = camera.animate(interval=1000.0/self.frame_rate)
         animation.save(filepath)
         plt.close(fig)
         
-    def __getNose(self, landmarks):
+    def __getMark(self, landmarks, mark_num = 4):
         x = 0
         y = 0
         z = 0
         landmark = list(landmarks)
-        for mark in landmark:
-            x = mark.landmark[0].x
-            y = mark.landmark[0].y
-            z = mark.landmark[0].z
+        mark = landmark[0]
+        x = mark.landmark[mark_num].x
+        y = mark.landmark[mark_num].y
+        z = mark.landmark[mark_num].z
         return x, y, z
+    
+    def __normalize(self, distance_list):
+        return distance_list / self.face_length[1:] * self.frame_rate
     
