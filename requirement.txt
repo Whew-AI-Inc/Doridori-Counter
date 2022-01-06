@@ -1,0 +1,6 @@
+opencv-python
+mediapipe
+pandas
+seaborn
+celluloid
+tqdm
