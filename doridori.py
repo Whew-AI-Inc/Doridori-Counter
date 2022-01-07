@@ -22,9 +22,7 @@ class Doridori:
         
     def detect_face(self):
         frame_cnt = 0
-        nose_x = list()
-        nose_y = list()
-        nose_z = list()
+        noses = list()
         face_length = list()
         mp_face_mesh = mp.solutions.face_mesh
         with mp_face_mesh.FaceMesh(
@@ -39,13 +37,11 @@ class Doridori:
                     if results.multi_face_landmarks:
                         x, y, z = self.__getMark(results.multi_face_landmarks)
                         x_, y_, z_ = self.__getMark(results.multi_face_landmarks, mark_num=8)
-                        nose_x.append(x)
-                        nose_y.append(y)
-                        nose_z.append(z)
+                        noses.append([x, y, z])
                         face_length.append(distance.euclidean([x, y, z], [x_, y_, z_]))
                     if frame_cnt >= self.total_frame:
                         print("============End Video============")
-                        self.df = np.array([nose_x, nose_y, nose_z]).T
+                        self.df = np.array(noses)
                         self.face_length = np.array(face_length)
                         break
             self.cap.release()
@@ -63,15 +59,14 @@ class Doridori:
         distance_list = self.__normalize(np.array(distance_list))
         min_peak_distance = int(min_peak_time * self.frame_rate / 1000.0)
         peaks_index = find_peaks(distance_list, distance=min_peak_distance)[0]
-        low_peak_index = list()
+        dori_index = list()
         for i, j in enumerate (peaks_index):
-            if distance_list[j] < threshold:
-                low_peak_index.append(i)
-        peaks_index= np.delete(peaks_index, low_peak_index)
-        print(f"total_doridori_count : {len(peaks_index)}")
+            if distance_list[j] >= threshold:
+                dori_index.append(i)
+        print(f"total_doridori_count : {len(dori_index)}")
         peaks = list()
         for i, value in enumerate (distance_list):
-            if i in peaks_index:
+            if i in dori_index:
                 peaks.append(value)
             else:
                 peaks.append(np.nan)
@@ -83,7 +78,7 @@ class Doridori:
         self.distance_list = distance_list
         self.peaks = peaks
         
-        return len(peaks_index)
+        return len(dori_index)
     
     def save_video(self, filepath, display_frame = 100, video_size=(25,8)):
         fig, ax = plt.subplots(figsize=video_size)
